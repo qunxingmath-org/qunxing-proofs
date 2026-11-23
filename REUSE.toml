@@ -1,0 +1,22 @@
+# 每个文件的许可（REUSE 规范，https://reuse.software/）。
+# 同一个文件匹配多条时，以写在后面的一条为准。
+# 从第三方引用的内容，请在文件末尾为它们单独加一条，写明原作者和原许可。
+version = 1
+
+# 默认：复跑报告、检查参数等结构化记录，以及工具文件
+[[annotations]]
+path = "**"
+SPDX-FileCopyrightText = "2026 The Qunxing Contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
+# 证明文字、题意复核记录、说明文档
+[[annotations]]
+path = "**.md"
+SPDX-FileCopyrightText = "2026 The Qunxing Contributors"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+# Lean 工程，与 Mathlib 一致
+[[annotations]]
+path = ["**.lean", "**lakefile.toml", "**lean-toolchain", "**lake-manifest.json"]
+SPDX-FileCopyrightText = "2026 The Qunxing Contributors"
+SPDX-License-Identifier = "Apache-2.0"

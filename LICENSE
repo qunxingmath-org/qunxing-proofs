@@ -1,0 +1,27 @@
+本仓库的内容按类型使用不同的许可：
+
+- Lean 代码（*.lean、lakefile、lean-toolchain、lake-manifest.json）：
+  Apache-2.0，全文见 LICENSES/Apache-2.0.txt
+- 证明文字、题意复核记录、说明文档（*.md）：
+  CC BY-SA 4.0，全文见 LICENSES/CC-BY-SA-4.0.txt
+- 复跑报告、检查参数等结构化记录：
+  CC0 1.0，全文见 LICENSES/CC0-1.0.txt
+- 从第三方引用的内容：保持原许可，在 REUSE.toml 里单独标注。
+
+每个文件的许可以 REUSE.toml 为准（REUSE 规范：https://reuse.software/）。
+"群星"的名称和标志不在以上任何许可之内。
+
+---
+
+This repository uses different licenses by content type:
+
+- Lean code (*.lean, lakefile, lean-toolchain, lake-manifest.json):
+  Apache-2.0 (LICENSES/Apache-2.0.txt)
+- Proof texts, statement-review records and documentation (*.md):
+  CC-BY-SA-4.0 (LICENSES/CC-BY-SA-4.0.txt)
+- Rerun reports, check parameters and other structured records:
+  CC0-1.0 (LICENSES/CC0-1.0.txt)
+- Third-party content keeps its original license and is marked in REUSE.toml.
+
+REUSE.toml is authoritative for per-file licensing.
+The Qunxing name and logos are not licensed under any of these licenses.
