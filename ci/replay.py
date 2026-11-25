@@ -15,6 +15,13 @@ from gate import CI, SUBMISSION, inspect, read_json, read_submission, require
 
 STANDARDS = ["propext", "Quot.sound", "Classical.choice"]
 MODULE = re.compile(r"[A-Za-z_][A-Za-z0-9_']*")
+REJECTION = re.compile(
+    r"^error: (?:Const not found in |Constant not found in solution|Const does not match |"
+    r"Challenge and solution constant kind don't match|Challenge and solution theorem statement do not match|"
+    r"Challenge constant is not a definition|Solution constant is not a definition|"
+    r"Solution constant is not a theorem|Illegal axiom detected)|^Lean default kernel rejected ",
+    re.MULTILINE,
+)
 
 
 class Replay:
@@ -23,7 +30,7 @@ class Replay:
         self.mathlib = mathlib.resolve() if mathlib else None
         self.deadline = time.monotonic() + 45 * 60
 
-    def command(self, project, *args, stdout=subprocess.DEVNULL):
+    def command(self, project, *args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL):
         command = ["bwrap", "--unshare-all", "--clearenv", "--die-with-parent", "--new-session",
                    "--ro-bind", "/usr", "/usr", "--ro-bind-try", "/lib", "/lib",
                    "--ro-bind-try", "/lib64", "/lib64", "--symlink", "usr/bin", "/bin",
@@ -36,7 +43,7 @@ class Replay:
         seconds = self.deadline - time.monotonic()
         if seconds <= 0:
             raise subprocess.TimeoutExpired(args, 0)
-        return subprocess.run(command + list(args), stdout=stdout, stderr=subprocess.DEVNULL,
+        return subprocess.run(command + list(args), stdout=stdout, stderr=stderr,
                               timeout=seconds, check=False).returncode
 
     def project(self, directory, sources):
@@ -89,13 +96,17 @@ class Replay:
             }
             (compare / "comparator.json").write_text(json.dumps(config), encoding="utf-8")
             (compare / "lakefile.toml").write_text('name = "qunxing_compare"\n', encoding="utf-8")
-            code = self.command(compare, "lake", "comparator", "--config", "comparator.json",
-                                "--challenge-from-export", "challenge.jsonl",
-                                "--solution-from-export", "solution.jsonl")
+            transcript = work/"comparator.log"
+            with transcript.open("xb") as output:
+                code = self.command(compare, "lake", "comparator", "--config", "comparator.json",
+                                    "--challenge-from-export", "challenge.jsonl",
+                                    "--solution-from-export", "solution.jsonl",
+                                    stdout=output, stderr=subprocess.STDOUT)
             if code == 0:
                 return "PASS", "lean_leanchecker_nanoda_con_ron"
-            if code == 1:
-                return "FAIL", "comparator_rejected"
+            with transcript.open("r", encoding="utf-8", errors="replace") as output:
+                if code == 1 and any(REJECTION.search(line) for line in output):
+                    return "FAIL", "comparator_rejected"
             return "INCONCLUSIVE", "comparator_unavailable"
 
 

@@ -1,5 +1,7 @@
 name: verify-proof
 on:
+  pull_request:
+    paths: ["ci/**", ".github/workflows/ver-010.yml"]
   pull_request_target:
     paths: ["submissions/**"]
   schedule:
@@ -12,7 +14,7 @@ concurrency:
 
 jobs:
   gate:
-    if: github.repository == 'qunxingmath-org/qunxing-proofs'
+    if: github.repository == 'qunxingmath-org/qunxing-proofs' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     outputs:
@@ -96,3 +98,22 @@ jobs:
           path: ${{ runner.temp }}/verification.json
           retention-days: 90
           if-no-files-found: error
+
+  tooling-test:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - name: Exercise the boundary and actual verifier
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap zstd python3-yaml python3-jsonschema
+          /usr/bin/python3 -B ci/test_gate.py -v
+          bash ci/prepare-tools.sh "$RUNNER_TEMP/lean-smoke" --lean-only
+          /usr/bin/python3 -B ci/smoke.py "$RUNNER_TEMP/lean-smoke/lean"
