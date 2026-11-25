@@ -37,6 +37,22 @@ class Replay:
         self.toolchain = toolchain.resolve()
         self.mathlib = mathlib.resolve() if mathlib else None
         self.deadline = time.monotonic() + 45 * 60
+        self.lean_paths = []
+        self.reserved = {"Mathlib", "Init", "Lean", "Lake", "Std"}
+        if self.mathlib:
+            # Expose prebuilt oleans without adding Lake targets that mutate the dependency tree.
+            manifest = read_json(self.mathlib / "lake-manifest.json")
+            packages = [Path(".")] + [
+                Path(manifest["packagesDir"]) / package["name"] / (package["subDir"] or "")
+                for package in manifest["packages"]
+            ]
+            for package in packages:
+                relative = package / ".lake/build/lib/lean"
+                library = self.mathlib / relative
+                if library.is_dir():
+                    self.lean_paths.append(str(Path("/deps/mathlib") / relative))
+                    self.reserved.update(entry.stem for entry in library.iterdir()
+                                         if entry.is_dir() or entry.suffix == ".olean")
 
     def command(self, project, *args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL):
         command = ["/usr/bin/bwrap", "--unshare-all", "--clearenv", "--die-with-parent", "--new-session",
@@ -49,7 +65,8 @@ class Replay:
                    "--bind", str(project), "/work", "--chdir", "/work",
                    "--setenv", "HOME", "/tmp", "--setenv", "PATH", "/toolchain/bin:/usr/bin"]
         if self.mathlib:
-            command += ["--ro-bind", str(self.mathlib), "/deps/mathlib"]
+            command += ["--ro-bind", str(self.mathlib), "/deps/mathlib",
+                        "--setenv", "LEAN_PATH", ":".join(self.lean_paths)]
         seconds = self.deadline - time.monotonic()
         if seconds <= 0:
             raise subprocess.TimeoutExpired(args, 0)
@@ -60,34 +77,11 @@ class Replay:
         directory.mkdir()
         roots = sorted({Path(name.split("/")[0]).stem for name in sources})
         require(all(MODULE.fullmatch(root) for root in roots), "Invalid Lean module name")
-        require(not {"Mathlib", "Init", "Lean", "Lake", "Std"}.intersection(roots), "Reserved Lean module root")
+        require(not self.reserved.intersection(roots), "Reserved Lean module root")
         lakefile = ('name = "qunxing_replay"\n'
                     'defaultTargets = ["QunxingReplay"]\n'
                     '[[lean_lib]]\nname = "QunxingReplay"\n'
                     f'roots = {json.dumps(roots)}\n')
-        if self.mathlib:
-            lakefile += '\n[[require]]\nname = "mathlib"\npath = "/deps/mathlib"\n'
-            (directory / "lean-toolchain").write_bytes((self.mathlib / "lean-toolchain").read_bytes())
-            manifest = read_json(self.mathlib / "lake-manifest.json")
-            package_dir = Path("/deps/mathlib") / manifest["packagesDir"]
-            packages = [
-                {
-                    "name": package["name"], "scope": package["scope"], "type": "path",
-                    "dir": str(package_dir / package["name"] / (package["subDir"] or "")),
-                    "manifestFile": package["manifestFile"], "configFile": package["configFile"],
-                    "inherited": True,
-                }
-                for package in manifest["packages"]
-            ]
-            packages.append({
-                "name": "mathlib", "scope": "", "type": "path", "dir": "/deps/mathlib",
-                "manifestFile": "lake-manifest.json", "configFile": "lakefile.lean", "inherited": False,
-            })
-            local_manifest = {
-                "version": manifest["version"], "name": "qunxing_replay", "packages": packages,
-                "lakeDir": ".lake", "packagesDir": ".lake/packages", "fixedToolchain": True,
-            }
-            (directory / "lake-manifest.json").write_text(json.dumps(local_manifest), encoding="utf-8")
         (directory / "lakefile.toml").write_text(lakefile, encoding="utf-8")
         for name, data in sources.items():
             path = directory / name
