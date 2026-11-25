@@ -117,5 +117,5 @@ jobs:
           sudo apt-get install -y -qq apparmor bubblewrap zstd python3-yaml python3-jsonschema
           /usr/bin/python3 -B ci/test_gate.py -v
           bash ci/prepare-bwrap.sh
-          bash ci/prepare-tools.sh "$RUNNER_TEMP/lean-smoke" --lean-only
-          /usr/bin/python3 -B ci/smoke.py "$RUNNER_TEMP/lean-smoke/lean"
+          bash ci/prepare-tools.sh "$RUNNER_TEMP/lean-smoke" Mathlib.Data.Nat.GCD.Basic
+          /usr/bin/python3 -B ci/smoke.py "$RUNNER_TEMP/lean-smoke/lean" "$RUNNER_TEMP/lean-smoke/mathlib"

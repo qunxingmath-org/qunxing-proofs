@@ -18,16 +18,17 @@ class FixtureReplay(Replay):
         return status
 
 
-chain = Path(sys.argv[1])
+chain, mathlib = map(Path, sys.argv[1:])
+imports = b"import Mathlib.Data.Nat.GCD.Basic\n"
 proof = {
-    "Challenge.lean": b"theorem qxSample : 1 + 1 = 2 := by sorry\n",
-    "Solution.lean": b"theorem qxSample : 1 + 1 = 2 := rfl\n",
+    "Challenge.lean": imports + b"theorem qxSample : 1 + 1 = 2 := by sorry\n",
+    "Solution.lean": imports + b"theorem qxSample : 1 + 1 = 2 := rfl\n",
 }
-accepted = FixtureReplay(chain, None).run(proof, ["qxSample"], [])
+accepted = FixtureReplay(chain, mathlib).run(proof, ["qxSample"], [])
 print("Matching theorem:", accepted)
 assert accepted[0] == "PASS"
 
-proof["Solution.lean"] = b"theorem qxSample : 1 + 2 = 3 := rfl\n"
-rejected = FixtureReplay(chain, None).run(proof, ["qxSample"], [])
+proof["Solution.lean"] = imports + b"theorem qxSample : 1 + 2 = 3 := rfl\n"
+rejected = FixtureReplay(chain, mathlib).run(proof, ["qxSample"], [])
 print("Different statement:", rejected)
 assert rejected[0] == "FAIL"
