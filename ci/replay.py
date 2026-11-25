@@ -51,7 +51,7 @@ class Replay:
                 library = self.mathlib / relative
                 if library.is_dir():
                     for entry in library.iterdir():
-                        self.libraries.setdefault(entry.name, Path("/deps/mathlib") / relative / entry.name)
+                        self.libraries.setdefault(entry.name, entry)
                         if entry.is_dir() or entry.suffix == ".olean":
                             self.reserved.add(entry.stem)
 
@@ -65,8 +65,9 @@ class Replay:
                    "--ro-bind", str(self.toolchain), "/toolchain",
                    "--bind", str(project), "/work", "--chdir", "/work",
                    "--setenv", "HOME", "/tmp", "--setenv", "PATH", "/toolchain/bin:/usr/bin"]
-        if self.mathlib:
-            command += ["--ro-bind", str(self.mathlib), "/deps/mathlib"]
+        if (project / ".lake/build/lib/lean").is_dir():
+            for name, library in self.libraries.items():
+                command += ["--ro-bind", str(library), f"/work/.lake/build/lib/lean/{name}"]
         seconds = self.deadline - time.monotonic()
         if seconds <= 0:
             raise subprocess.TimeoutExpired(args, 0)
@@ -84,10 +85,7 @@ class Replay:
                     f'roots = {json.dumps(roots)}\n')
         (directory / "lakefile.toml").write_text(lakefile, encoding="utf-8")
         if self.libraries:
-            artifacts = directory / ".lake/build/lib/lean"
-            artifacts.mkdir(parents=True)
-            for name, target in self.libraries.items():
-                (artifacts / name).symlink_to(target)
+            (directory / ".lake/build/lib/lean").mkdir(parents=True)
         for name, data in sources.items():
             path = directory / name
             path.parent.mkdir(parents=True, exist_ok=True)
