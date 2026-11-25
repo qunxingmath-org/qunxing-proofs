@@ -34,6 +34,7 @@ class Replay:
         command = ["/usr/bin/bwrap", "--unshare-all", "--clearenv", "--die-with-parent", "--new-session",
                    "--ro-bind", "/usr", "/usr", "--ro-bind-try", "/lib", "/lib",
                    "--ro-bind-try", "/lib64", "/lib64", "--symlink", "usr/bin", "/bin",
+                   "--ro-bind-try", "/etc/alternatives", "/etc/alternatives",
                    "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp",
                    "--ro-bind", str(self.toolchain), "/toolchain",
                    "--bind", str(project), "/work", "--chdir", "/work",
