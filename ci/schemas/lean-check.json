@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.qunxingmath.org/schema/qunxing.lean-check-1.schema.json",
+  "title": "本机 Lean 检查参数 / Local Lean check parameters",
+  "description": "桌面端在 Agent 写不到的目录里核对 Lean 证明后写下的参数，放在提交目录的 records/lean-check.json。只当复跑说明，不当证据。会随证明公开，所以不含编译时间、费用、时间戳和本机路径（编译用时只在科研数据 run-stats/1 的 lean_wall_s 里）。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "challenge_sha256",
+    "solution_sha256",
+    "toolchain",
+    "mathlib_rev",
+    "lake_manifest_sha256",
+    "commands",
+    "axioms",
+    "comparator",
+    "leanchecker"
+  ],
+  "properties": {
+    "schema": {
+      "const": "qunxing.lean-check/1"
+    },
+    "challenge_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Challenge.lean 的 sha256"
+    },
+    "solution_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Solution.lean 的 sha256"
+    },
+    "toolchain": {
+      "type": "string",
+      "pattern": "^leanprover/lean4:v[0-9]+\\.[0-9]+\\.[0-9]+(-rc[0-9]+)?$"
+    },
+    "mathlib_rev": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "lake_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "lake-manifest.json 的 sha256"
+    },
+    "commands": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "description": "按顺序执行的命令和退出码；只用相对路径",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cmd",
+          "exit_code"
+        ],
+        "properties": {
+          "cmd": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "not": {
+              "pattern": "(^/|^~|[A-Za-z]:[\\\\/]|/home/|/Users/|\\\\Users\\\\|\\.\\.)"
+            }
+          },
+          "exit_code": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "axioms": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_.']{0,199}$"
+      },
+      "description": "证明用到的公理"
+    },
+    "comparator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "result"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail",
+            "not_run"
+          ]
+        }
+      },
+      "description": "比对结果"
+    },
+    "leanchecker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "result"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail",
+            "not_run"
+          ]
+        }
+      }
+    }
+  }
+}
