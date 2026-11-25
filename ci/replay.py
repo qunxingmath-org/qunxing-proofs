@@ -70,12 +70,24 @@ class Replay:
             (directory / "lean-toolchain").write_bytes((self.mathlib / "lean-toolchain").read_bytes())
             manifest = read_json(self.mathlib / "lake-manifest.json")
             package_dir = Path("/deps/mathlib") / manifest["packagesDir"]
-            overrides = {"version": manifest["version"], "packages": [
-                dict(package, type="path", dir=str(package_dir / package["name"] / (package["subDir"] or "")))
+            packages = [
+                {
+                    "name": package["name"], "scope": package["scope"], "type": "path",
+                    "dir": str(package_dir / package["name"] / (package["subDir"] or "")),
+                    "manifestFile": package["manifestFile"], "configFile": package["configFile"],
+                    "inherited": True,
+                }
                 for package in manifest["packages"]
-            ]}
-            (directory / ".lake").mkdir()
-            (directory / ".lake/package-overrides.json").write_text(json.dumps(overrides), encoding="utf-8")
+            ]
+            packages.append({
+                "name": "mathlib", "scope": "", "type": "path", "dir": "/deps/mathlib",
+                "manifestFile": "lake-manifest.json", "configFile": "lakefile.lean", "inherited": False,
+            })
+            local_manifest = {
+                "version": manifest["version"], "name": "qunxing_replay", "packages": packages,
+                "lakeDir": ".lake", "packagesDir": ".lake/packages", "fixedToolchain": True,
+            }
+            (directory / "lake-manifest.json").write_text(json.dumps(local_manifest), encoding="utf-8")
         (directory / "lakefile.toml").write_text(lakefile, encoding="utf-8")
         for name, data in sources.items():
             path = directory / name
