@@ -14,9 +14,17 @@ import yaml
 from gate import CI, SUBMISSION, inspect, read_json, read_submission, require
 
 STANDARDS = ["propext", "Quot.sound", "Classical.choice"]
+# Match the export roots used by Lean v4.35.0 Lake.CLI.Check for these axioms.
+COMPARATOR_ROOTS = [
+    *STANDARDS, "Quot", "Quot.mk", "Quot.lift", "Quot.ind",
+    "Nat.add", "Nat.sub", "Nat.mul", "Nat.pow", "Nat.gcd", "Nat.div", "Nat.mod",
+    "Nat.beq", "Nat.ble", "Nat.land", "Nat.lor", "Nat.xor", "Nat.shiftLeft", "Nat.shiftRight",
+    "String.ofList", "Char.ofNat", "List", "eagerReduce", "Nat", "String", "String.mk",
+    "Char", "optParam", "autoParam", "semiOutParam", "outParam",
+]
 MODULE = re.compile(r"[A-Za-z_][A-Za-z0-9_']*")
 REJECTION = re.compile(
-    r"^error: (?:Const not found in |Constant not found in solution|Const does not match |"
+    r"^error: (?:Const not found in solution|Constant not found in solution|Const does not match |"
     r"Challenge and solution constant kind don't match|Challenge and solution theorem statement do not match|"
     r"Challenge constant is not a definition|Solution constant is not a definition|"
     r"Solution constant is not a theorem|Illegal axiom detected)|^Lean default kernel rejected ",
@@ -36,6 +44,7 @@ class Replay:
                    "--ro-bind-try", "/lib64", "/lib64", "--symlink", "usr/bin", "/bin",
                    "--ro-bind-try", "/etc/alternatives", "/etc/alternatives",
                    "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp",
+                   "--dir", "/home", "--dir", "/root", "--dir", "/run/user", "--dir", "/var",
                    "--ro-bind", str(self.toolchain), "/toolchain",
                    "--bind", str(project), "/work", "--chdir", "/work",
                    "--setenv", "HOME", "/tmp", "--setenv", "PATH", "/toolchain/bin:/usr/bin"]
@@ -85,7 +94,7 @@ class Replay:
             self.project(challenge, {"Challenge.lean": files["Challenge.lean"]})
             self.project(solution, {name: data for name, data in files.items()
                                    if name.endswith(".lean") and name != "Challenge.lean"})
-            targets = names + definitions
+            targets = list(dict.fromkeys(names + definitions + COMPARATOR_ROOTS))
             if not self.export(challenge, "Challenge", targets, compare / "challenge.jsonl"):
                 return "INCONCLUSIVE", "trusted_challenge_export_failed"
             if not self.export(solution, "Solution", targets, compare / "solution.jsonl"):
@@ -96,9 +105,6 @@ class Replay:
                 "external_kernels": {"nanoda": ["nanoda_bin"], "con-ron": ["con-ron"]},
             }
             (compare / "comparator.json").write_text(json.dumps(config), encoding="utf-8")
-            (compare / "lakefile.toml").write_text('name = "qunxing_compare"\n', encoding="utf-8")
-            if self.command(compare, "lake", "update") != 0:
-                return "INCONCLUSIVE", "comparator_manifest_failed"
             transcript = work/"comparator.log"
             with transcript.open("xb") as output:
                 code = self.command(compare, "lake", "comparator", "--config", "comparator.json",
