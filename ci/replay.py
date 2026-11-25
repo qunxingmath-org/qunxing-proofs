@@ -96,6 +96,8 @@ class Replay:
             }
             (compare / "comparator.json").write_text(json.dumps(config), encoding="utf-8")
             (compare / "lakefile.toml").write_text('name = "qunxing_compare"\n', encoding="utf-8")
+            if self.command(compare, "lake", "update") != 0:
+                return "INCONCLUSIVE", "comparator_manifest_failed"
             transcript = work/"comparator.log"
             with transcript.open("xb") as output:
                 code = self.command(compare, "lake", "comparator", "--config", "comparator.json",

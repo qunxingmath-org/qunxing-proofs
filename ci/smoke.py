@@ -12,6 +12,8 @@ class FixtureReplay(Replay):
         status = super().command(project, *args,
                                  stdout=None if stdout == subprocess.DEVNULL else stdout,
                                  stderr=None if stderr == subprocess.DEVNULL else stderr)
+        if status != 0 and "comparator" in args:
+            print(Path(stdout.name).read_text(encoding="utf-8", errors="replace")[:4000], flush=True)
         print("Fixture exit status:", status, flush=True)
         return status
 
