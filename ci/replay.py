@@ -31,7 +31,7 @@ class Replay:
         self.deadline = time.monotonic() + 45 * 60
 
     def command(self, project, *args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL):
-        command = ["bwrap", "--unshare-all", "--clearenv", "--die-with-parent", "--new-session",
+        command = ["/usr/bin/bwrap", "--unshare-all", "--clearenv", "--die-with-parent", "--new-session",
                    "--ro-bind", "/usr", "/usr", "--ro-bind-try", "/lib", "/lib",
                    "--ro-bind-try", "/lib64", "/lib64", "--symlink", "usr/bin", "/bin",
                    "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp",

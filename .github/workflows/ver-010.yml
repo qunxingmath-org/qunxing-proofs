@@ -76,7 +76,8 @@ jobs:
           mkdir trusted
           git -C proofs archive "$SOURCE_COMMIT" ci | tar -xf - -C trusted
           sudo apt-get update -qq
-          sudo apt-get install -y -qq bubblewrap zstd python3-yaml python3-jsonschema
+          sudo apt-get install -y -qq apparmor bubblewrap zstd python3-yaml python3-jsonschema
+          bash trusted/ci/prepare-bwrap.sh
           bash trusted/ci/prepare-tools.sh "$RUNNER_TEMP/lean-work"
       - name: Replay isolated Lean proof
         run: |
@@ -113,7 +114,8 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y -qq bubblewrap zstd python3-yaml python3-jsonschema
+          sudo apt-get install -y -qq apparmor bubblewrap zstd python3-yaml python3-jsonschema
           /usr/bin/python3 -B ci/test_gate.py -v
+          bash ci/prepare-bwrap.sh
           bash ci/prepare-tools.sh "$RUNNER_TEMP/lean-smoke" --lean-only
           /usr/bin/python3 -B ci/smoke.py "$RUNNER_TEMP/lean-smoke/lean"
