@@ -67,6 +67,15 @@ class Replay:
                     f'roots = {json.dumps(roots)}\n')
         if self.mathlib:
             lakefile += '\n[[require]]\nname = "mathlib"\npath = "/deps/mathlib"\n'
+            (directory / "lean-toolchain").write_bytes((self.mathlib / "lean-toolchain").read_bytes())
+            manifest = read_json(self.mathlib / "lake-manifest.json")
+            package_dir = Path("/deps/mathlib") / manifest["packagesDir"]
+            overrides = {"version": manifest["version"], "packages": [
+                dict(package, type="path", dir=str(package_dir / package["name"] / (package["subDir"] or "")))
+                for package in manifest["packages"]
+            ]}
+            (directory / ".lake").mkdir()
+            (directory / ".lake/package-overrides.json").write_text(json.dumps(overrides), encoding="utf-8")
         (directory / "lakefile.toml").write_text(lakefile, encoding="utf-8")
         for name, data in sources.items():
             path = directory / name
@@ -74,12 +83,12 @@ class Replay:
             path.write_bytes(data)
 
     def export(self, directory, module, targets, output):
-        if self.command(directory, "lake", "build") != 0:
+        if self.command(directory, "lake", "-f", "lakefile.toml", "build") != 0:
             return False
-        if module == "Solution" and self.command(directory, "lake", "env", "leanchecker", "--fresh", module) != 0:
+        if module == "Solution" and self.command(directory, "lake", "-f", "lakefile.toml", "env", "leanchecker", "--fresh", module) != 0:
             return False
         with output.open("xb") as file:
-            status = self.command(directory, "lake", "env", "leanexport", module, "--", *targets, stdout=file)
+            status = self.command(directory, "lake", "-f", "lakefile.toml", "env", "leanexport", module, "--", *targets, stdout=file)
         return status == 0 and output.stat().st_size > 0
 
     def run(self, files, names, definitions):
