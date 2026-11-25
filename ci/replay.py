@@ -37,7 +37,7 @@ class Replay:
         self.toolchain = toolchain.resolve()
         self.mathlib = mathlib.resolve() if mathlib else None
         self.deadline = time.monotonic() + 45 * 60
-        self.lean_paths = []
+        self.libraries = {}
         self.reserved = {"Mathlib", "Init", "Lean", "Lake", "Std"}
         if self.mathlib:
             # Expose prebuilt oleans without adding Lake targets that mutate the dependency tree.
@@ -50,9 +50,10 @@ class Replay:
                 relative = package / ".lake/build/lib/lean"
                 library = self.mathlib / relative
                 if library.is_dir():
-                    self.lean_paths.append(str(Path("/deps/mathlib") / relative))
-                    self.reserved.update(entry.stem for entry in library.iterdir()
-                                         if entry.is_dir() or entry.suffix == ".olean")
+                    for entry in library.iterdir():
+                        self.libraries.setdefault(entry.name, Path("/deps/mathlib") / relative / entry.name)
+                        if entry.is_dir() or entry.suffix == ".olean":
+                            self.reserved.add(entry.stem)
 
     def command(self, project, *args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL):
         command = ["/usr/bin/bwrap", "--unshare-all", "--clearenv", "--die-with-parent", "--new-session",
@@ -65,8 +66,7 @@ class Replay:
                    "--bind", str(project), "/work", "--chdir", "/work",
                    "--setenv", "HOME", "/tmp", "--setenv", "PATH", "/toolchain/bin:/usr/bin"]
         if self.mathlib:
-            command += ["--ro-bind", str(self.mathlib), "/deps/mathlib",
-                        "--setenv", "LEAN_PATH", ":".join(self.lean_paths)]
+            command += ["--ro-bind", str(self.mathlib), "/deps/mathlib"]
         seconds = self.deadline - time.monotonic()
         if seconds <= 0:
             raise subprocess.TimeoutExpired(args, 0)
@@ -83,6 +83,11 @@ class Replay:
                     '[[lean_lib]]\nname = "QunxingReplay"\n'
                     f'roots = {json.dumps(roots)}\n')
         (directory / "lakefile.toml").write_text(lakefile, encoding="utf-8")
+        if self.libraries:
+            artifacts = directory / ".lake/build/lib/lean"
+            artifacts.mkdir(parents=True)
+            for name, target in self.libraries.items():
+                (artifacts / name).symlink_to(target)
         for name, data in sources.items():
             path = directory / name
             path.parent.mkdir(parents=True, exist_ok=True)
