@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.qunxingmath.org/schema/qunxing.run-submission-1.schema.json",
+  "title": "提交附带的运行记录（公开投影）/ Public run record attached to a submission",
+  "description": "放在提交目录的 records/run.json，会公开。按用户 2026-11-23 的决定，证明提交不含用量和费用：这里只留会话结构（哪个环节用了哪个模型和工具）、解题后查新的结论和其他记录文件的哈希；不放 token、est_usd 和时间。与提交与验证规范 V7 的旧写法不同，以本格式为准。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "run_ref",
+    "problem_id",
+    "card_rev",
+    "claim_revision",
+    "sessions",
+    "novelty_post",
+    "lean_check_sha256",
+    "verdicts_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "qunxing.run-submission/1"
+    },
+    "run_ref": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$",
+      "description": "与 qunxing.yaml 的 records.run_ref 相同"
+    },
+    "problem_id": {
+      "type": "string",
+      "pattern": "^QX-P-[0-9]{6}$",
+      "description": "群星题号 / problem id"
+    },
+    "card_rev": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "claim_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sessions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stage",
+          "ledger",
+          "kind",
+          "vendor",
+          "harness",
+          "cli_version",
+          "model",
+          "fresh_context"
+        ],
+        "properties": {
+          "stage": {
+            "enum": [
+              "audit_card",
+              "novelty_pre",
+              "solve",
+              "formal",
+              "audit_claim",
+              "review",
+              "novelty_post",
+              "provenance",
+              "control",
+              "discovery"
+            ]
+          },
+          "ledger": {
+            "enum": [
+              "solve",
+              "verify",
+              "novelty",
+              "control",
+              "discovery"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "main",
+              "subagent",
+              "fork",
+              "repair",
+              "fresh"
+            ]
+          },
+          "vendor": {
+            "enum": [
+              "openai",
+              "anthropic",
+              "google",
+              "deepseek",
+              "moonshot",
+              "alibaba",
+              "zhipu",
+              "xai",
+              "other"
+            ]
+          },
+          "harness": {
+            "enum": [
+              "codex",
+              "claude-code",
+              "gemini-cli",
+              "kimi-cli",
+              "qwen-code",
+              "opencode",
+              "other"
+            ]
+          },
+          "cli_version": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+          },
+          "model": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+            "description": "价格表里的模型名；价格表里没有的一律写 other，不上传自定义名称 / model name from the price table, else other"
+          },
+          "fresh_context": {
+            "type": "boolean",
+            "description": "是否全新上下文（验证会话要为 true）"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "stage": {
+                  "enum": [
+                    "solve"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "ledger": {
+                  "const": "solve"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "stage": {
+                  "enum": [
+                    "audit_card",
+                    "audit_claim",
+                    "review",
+                    "formal"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "ledger": {
+                  "const": "verify"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "stage": {
+                  "enum": [
+                    "novelty_pre",
+                    "novelty_post",
+                    "provenance"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "ledger": {
+                  "const": "novelty"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "stage": {
+                  "enum": [
+                    "control"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "ledger": {
+                  "const": "control"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "stage": {
+                  "enum": [
+                    "discovery"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "ledger": {
+                  "const": "discovery"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "novelty_post": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "result",
+            "provenance"
+          ],
+          "properties": {
+            "result": {
+              "enum": [
+                "not_found_in_scope",
+                "known_result",
+                "partial_result",
+                "claimed_solution",
+                "inconclusive"
+              ]
+            },
+            "provenance": {
+              "enum": [
+                "source_seen",
+                "query_match",
+                "none_seen",
+                "unknown"
+              ]
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "解题后查新的结论，用来给星星加\"已有结果的新证明\"\"检索所得\"等记号；没做为 null。报告全文不随提交公开"
+    },
+    "lean_check_sha256": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "records/lean-check.json 的 sha256"
+    },
+    "verdicts_sha256": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "description": "records/verdicts/ 下各份 qunxing.verdict/1 的 sha256"
+    }
+  }
+}
